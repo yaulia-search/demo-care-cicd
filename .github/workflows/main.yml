@@ -6,6 +6,14 @@ stages:
 - apply
 - destroy # Optional, for cleanup
 
+on:
+  push:
+    branches:
+      - main-demo-care-cicd
+    paths:  
+      - terraform/**
+  workflow_dispatch: #
+
 variables:
   AWS_REGION: "us-east-1" # Replace with your desired region
   #TF_STATE_BUCKET: "your-terraform-state-bucket" # Replace with your S3 bucket for Terraform state
