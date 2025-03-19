@@ -1,0 +1,70 @@
+# Example GitLab CI/CD pipeline for Terraform AWS
+
+stages:
+- validate
+- plan
+- apply
+- destroy # Optional, for cleanup
+
+variables:
+  AWS_REGION: "us-east-1" # Replace with your desired region
+  #TF_STATE_BUCKET: "your-terraform-state-bucket" # Replace with your S3 bucket for Terraform state
+  #TF_STATE_KEY: "terraform/state.tfstate" # Path to your state file within the bucket
+  AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID # GitLab CI/CD variable
+  AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY # GitLab CI/CD variable
+
+validate:
+  stage: validate
+  image: hashicorp/terraform:latest
+  script:
+    - terraform init -backend-config="bucket=$TF_STATE_BUCKET" -backend-config="key=$TF_STATE_KEY" -backend-config="region=$AWS_REGION"
+    - terraform validate
+
+plan:
+  stage: plan
+  image: hashicorp/terraform:latest
+  script:
+    - terraform init -backend-config="bucket=$TF_STATE_BUCKET" -backend-config="key=$TF_STATE_KEY" -backend-config="region=$AWS_REGION"
+    - terraform plan -out=tfplan
+  artifacts:
+    paths:
+      - tfplan
+  dependencies:
+    - validate
+  only:
+    - main # Or your desired branch
+
+apply:
+  stage: apply
+  image: hashicorp/terraform:latest
+  script:
+    - terraform init -backend-config="bucket=$TF_STATE_BUCKET" -backend-config="key=$TF_STATE_KEY" -backend-config="region=$AWS_REGION"
+    - terraform apply -auto-approve tfplan
+  dependencies:
+    - plan
+  only:
+    - main # Or your desired branch
+  environment:
+    name: production
+    url: https://your-deployed-application.com # Optional, your application URL
+
+destroy:
+  stage: destroy
+  image: hashicorp/terraform:latest
+  script:
+    - terraform init -backend-config="bucket=$TF_STATE_BUCKET" -backend-config="key=$TF_STATE_KEY" -backend-config="region=$AWS_REGION"
+    - terraform destroy -auto-approve
+  dependencies:
+    - apply
+  only:
+    - main # Or your desired branch
+  when: manual # Requires manual trigger.
+
+# Optional: Using a .terraformrc file for provider configuration
+# .terraformrc example:
+# providers {
+#   aws = {
+#     shared_credentials_files = ["~/.aws/credentials"] # or use a specific profile
+#     region  = "us-east-1"
+#   }
+# }
